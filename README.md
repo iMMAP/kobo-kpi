@@ -1,3 +1,25 @@
+# KoBo for iMMAP
+
+## About
+
+This repository contains the source code for creating survey forms and reusing assets through a question library.
+
+## Notes
+
+This source code is originally a fork of [`kpi`](https://github.com/kobotoolbox/kpi).
+
+Any references to the following repositories:
+- `kobotoolbox/kpi`
+- `kobotoolbox/kobocat`
+
+Should be replaced by their corresponding ones from iMMAP:
+- `kobotoolbox/kpi` --> `iMMAP/kobo-kpi`
+- `kobotoolbox/kobocat` --> `iMMAP/kobo-kobocat`
+
+## Installation
+
+To install KoBo in your local environment, follow the instructions from [kobo-install](https://github.com/iMMAP/kobo-install).
+
 # KPI
 
 [![Build Status](https://travis-ci.org/kobotoolbox/kpi.svg?branch=develop)](https://travis-ci.org/kobotoolbox/kpi)

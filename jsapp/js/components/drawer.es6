@@ -159,7 +159,7 @@ class Drawer extends Reflux.Component {
         </bem.KDrawer__sidebar>
 
         <bem.KDrawer__secondaryIcons>
-          { stores.session.isLoggedIn &&
+          {/* { stores.session.isLoggedIn &&
             <IntercomHelpBubble/>
           }
           { stores.session.isLoggedIn &&
@@ -180,6 +180,11 @@ class Drawer extends Reflux.Component {
             <a href={stores.serverEnvironment.state.source_code_url}
               className='k-drawer__link' target='_blank' data-tip={t('Source')}>
               <i className='k-icon k-icon-logo-github' />
+            </a>
+          } */}
+          { <a href="http://help.immap.org"
+              className='k-drawer__link' target='_blank' data-tip={t('Help')}>
+              <i className='k-icon k-icon-help'/>
             </a>
           }
         </bem.KDrawer__secondaryIcons>
