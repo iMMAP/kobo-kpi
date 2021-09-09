@@ -899,8 +899,6 @@ class ProjectSettings extends React.Component {
             />
           </bem.FormModal__item> */}
 
-          <bem.FormModal__item m='kobo-metadata-share' />
-
           {(this.props.context === PROJECT_SETTINGS_CONTEXTS.NEW || this.props.context === PROJECT_SETTINGS_CONTEXTS.REPLACE) &&
             <bem.Modal__footer>
               {/* Don't allow going back if asset already exist */}
