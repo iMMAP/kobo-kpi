@@ -112,7 +112,7 @@
     color: $kobo-white;
     text-align: center;
     font-weight: 600;
-    background-color: $kobo-gray-92;
+    background-color: $kobo-gray-85;
     border-bottom: 2px solid $kobo-gray-65;
     text-shadow: -1px -1px $kobo-gray-65;
     clear: both;
@@ -120,7 +120,7 @@
     &:hover {
       background-color: $kobo-gray-65;
       border-bottom-color: $kobo-gray-92;
-      text-shadow: -1px -1px $kobo-gray-92;
+      text-shadow: 0px 0px $kobo-gray-92;
     }
   }
 }
