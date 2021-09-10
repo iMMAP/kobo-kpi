@@ -5,6 +5,11 @@
 //
 // NOTE: the hue and saturation is identical in all grays, keep it this way
 
+/* 
+  KoBo: To facilitate product upgrades, we keep the references to the default color 
+  variables, but change their color values to match with iMMAP's branding. 
+*/
+
 /*
   Group 1: Blueish grays
 */
@@ -56,32 +61,32 @@ $kobo-white: hsl(225, 16%, 100%); // #ffffff
   Group 2: Accent colors
 */
 
-$kobo-blue: hsl(206, 90%, 55%);
-$kobo-blue-darker: hsl(206, 90%, 33%);
-$kobo-blue-dark: hsl(206, 90%, 45%);
-$kobo-blue-light: hsl(206, 90%, 60%);
-$kobo-blue-pale: hsl(206, 90%, 80%);
+$kobo-blue: hsl(358, 70%, 44%);
+$kobo-blue-darker: hsl(2, 64%, 39%);
+$kobo-blue-dark: hsl(1, 43%, 48%);
+$kobo-blue-light: hsl(1, 36%, 55%);
+$kobo-blue-pale: hsl(1, 34%, 63%);
 
-$kobo-teal: hsl(187, 70%, 45%);
-$kobo-teal-light: hsl(187, 70%, 95%); // the row hover color
-$kobo-teal-pale: hsl(187, 60%, 60%);
-$kobo-teal-pale-dark: hsl(187, 58%, 33%);
+$kobo-teal: hsl(358, 70%, 44%);
+$kobo-teal-light: hsl(1, 36%, 55%); // the row hover color
+$kobo-teal-pale: hsl(1, 34%, 63%);
+$kobo-teal-pale-dark: hsl(1, 32%, 33%);
 
 // positive colors
-$kobo-green: hsl(149, 65%, 45%);
-$kobo-green-dark: hsl(149, 65%, 35%);
-$kobo-green-light: hsl(149, 65%, 90%);
+$kobo-green: hsl(115, 41%, 31%);
+$kobo-green-dark: hsl(169, 80%, 25%);
+$kobo-green-light: hsl(170, 63%, 43%);
 
 // error/negative colors
-$kobo-red: hsl(352, 77%, 60%);
-$kobo-red-dark: hsl(352, 70%, 40%);
-$kobo-red-light: hsl(352, 70%, 90%);
-$kobo-red-pale: hsl(352, 100%, 92%);
-$kobo-red-pale-dark: hsl(352, 30%, 44%);
+$kobo-red: hsl(205, 100%, 30%);
+$kobo-red-dark: hsl(216, 59%, 24%);
+$kobo-red-light: hsl(205, 60%, 48%);
+$kobo-red-pale: hsl(208, 61%, 72%);
+$kobo-red-pale-dark: hsl(205, 59%, 60%);
 
 // warning colors
-$kobo-orange: hsl(30, 80%, 50%);
-$kobo-orange-dark: hsl(30, 80%, 40%);
-$kobo-orange-light: hsl(30, 80%, 95%);
+$kobo-orange: hsl(16, 83%, 50%);
+$kobo-orange-dark: hsl(16, 23%, 23%);
+$kobo-orange-light: hsl(357, 19%, 79%);
 $kobo-orange-pale: hsl(30, 100%, 89%);
 $kobo-orange-pale-dark: hsl(30, 20%, 35%);

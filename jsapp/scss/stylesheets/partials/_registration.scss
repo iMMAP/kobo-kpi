@@ -3,7 +3,7 @@
 // ==========================================================================
 
 .registration__bg {
-  background: url("../img/signup_photo.jpg");
+  //background: url("../img/signup_photo.jpg");
   background-size: cover;
   background-repeat: none;
   width: 100%;
@@ -26,14 +26,14 @@
     margin: 0 auto;
     position: relative;
     max-width: 400px;
-    background: rgba($kobo-gray-24, 0.75);
+    background: rgba($kobo-blue, 1);
     padding: 20px 30px;
 
     a {
-      color: lighten($kobo-blue, 20%);
+      color: lighten($kobo-gray-92, 20%);
 
       &:hover {
-        color: $kobo-blue;
+        color: $kobo-gray-92;
       }
 
       &.registration__forgot {
@@ -102,7 +102,7 @@
   opacity: 0.9;
 
   &:focus {
-    border-bottom-color: $kobo-blue;
+    border-bottom-color: $kobo-red;
     opacity: 1;
   }
 
@@ -112,15 +112,15 @@
     color: $kobo-white;
     text-align: center;
     font-weight: 600;
-    background-color: $kobo-green;
-    border-bottom: 2px solid $kobo-green-dark;
-    text-shadow: -1px -1px $kobo-green-dark;
+    background-color: $kobo-gray-85;
+    border-bottom: 2px solid $kobo-gray-65;
+    text-shadow: -1px -1px $kobo-gray-65;
     clear: both;
 
     &:hover {
-      background-color: $kobo-blue-light;
-      border-bottom-color: $kobo-blue-dark;
-      text-shadow: -1px -1px $kobo-blue-dark;
+      background-color: $kobo-gray-65;
+      border-bottom-color: $kobo-gray-92;
+      text-shadow: 0px 0px $kobo-gray-92;
     }
   }
 }
@@ -136,7 +136,7 @@
   }
 
   span.required {
-    color: $kobo-red;
+    color: $kobo-blue;
     margin-left: 3px;
   }
 
@@ -196,7 +196,7 @@
 
   ul.errorlist {
     padding: 0px;
-    color: $kobo-red;
+    color: $kobo-blue;
     margin: 8px 0px;
   }
 }
@@ -252,8 +252,8 @@
 
 .error-message {
   font-size: 14px;
-  color: $kobo-red;
-  background-color: rgba($kobo-red, 0.075);
+  color: $kobo-blue;
+  background-color: rgba($kobo-blue, 0.075);
 }
 
 .registration__credit {
