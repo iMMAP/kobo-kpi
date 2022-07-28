@@ -1,9 +1,11 @@
+@use "scss/_variables";
+
 // ==========================================================================
 // Registration Forms
 // ==========================================================================
 
 .registration__bg {
-  //background: url("../img/signup_photo.jpg");
+  background: url("../img/signup_photo.jpg");
   background-size: cover;
   background-repeat: none;
   width: 100%;
@@ -26,14 +28,14 @@
     margin: 0 auto;
     position: relative;
     max-width: 400px;
-    background: rgba($kobo-blue, 1);
+    background: rgba($kobo-gray-24, 0.75);
     padding: 20px 30px;
 
     a {
-      color: lighten($kobo-gray-92, 20%);
+      color: lighten($kobo-blue, 20%);
 
       &:hover {
-        color: $kobo-gray-92;
+        color: $kobo-blue;
       }
 
       &.registration__forgot {
@@ -92,36 +94,17 @@
 .registration select {
   width: 100%;
   display: block;
-  padding: 5px 8px;
+  padding: 8px 10px;
   border: none;
-  border-radius: 0px;
-  font-size: 14px;
+  border-radius: 6px;
+  font-size: variables.$base-font-size;
   border-bottom: 3px solid transparent;
-  padding-bottom: 3px;
   margin-top: 1px;
   opacity: 0.9;
 
   &:focus {
-    border-bottom-color: $kobo-red;
+    border-bottom-color: $kobo-blue;
     opacity: 1;
-  }
-
-  &.registration__action {
-    font-size: 16px;
-    padding: 10px;
-    color: $kobo-white;
-    text-align: center;
-    font-weight: 600;
-    background-color: $kobo-gray-85;
-    border-bottom: 2px solid $kobo-gray-65;
-    text-shadow: -1px -1px $kobo-gray-65;
-    clear: both;
-
-    &:hover {
-      background-color: $kobo-gray-65;
-      border-bottom-color: $kobo-gray-92;
-      text-shadow: 0px 0px $kobo-gray-92;
-    }
   }
 }
 
@@ -136,7 +119,7 @@
   }
 
   span.required {
-    color: $kobo-blue;
+    color: $kobo-red;
     margin-left: 3px;
   }
 
@@ -196,7 +179,7 @@
 
   ul.errorlist {
     padding: 0px;
-    color: $kobo-blue;
+    color: $kobo-red;
     margin: 8px 0px;
   }
 }
@@ -251,9 +234,9 @@
 }
 
 .error-message {
-  font-size: 14px;
-  color: $kobo-blue;
-  background-color: rgba($kobo-blue, 0.075);
+  font-size: variables.$base-font-size;
+  color: $kobo-red;
+  background-color: rgba($kobo-red, 0.075);
 }
 
 .registration__credit {
@@ -329,7 +312,7 @@
   }
 
   .registration .registration__kc-domain {
-    font-size: 14px;
+    font-size: variables.$base-font-size;
     letter-spacing: 0em;
   }
 }

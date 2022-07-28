@@ -4,11 +4,12 @@ import {
   formatTimeDate,
   formatDate,
 } from 'utils';
-import {bem} from 'js/bem';
+import bem from 'js/bem';
 import {renderQuestionTypeIcon} from 'js/assetUtils';
 import {
   DISPLAY_GROUP_TYPES,
   getSubmissionDisplayData,
+  getMediaAttachment,
 } from 'js/components/submissions/submissionUtils';
 import {
   META_QUESTION_TYPES,
@@ -16,6 +17,7 @@ import {
   SCORE_ROW_TYPE,
   RANK_LEVEL_TYPE,
 } from 'js/constants';
+import './submissionDataTable.scss';
 
 /**
  * @prop {object} asset
@@ -203,18 +205,6 @@ class SubmissionDataTable extends React.Component {
   }
 
   /**
-   * @prop {string} filename
-   * @returns {object|undefined}
-   */
-  findAttachmentData(targetFilename) {
-    // Match filename with full filename in attachment list
-    // BUG: this works but is possible to find bad attachment as `includes` can match multiple
-    return this.props.submissionData._attachments.find((attachment) => {
-      return attachment.filename.endsWith(`/${targetFilename}`);
-    });
-  }
-
-  /**
    * @prop {string} data
    */
   renderPointData(data) {
@@ -264,14 +254,12 @@ class SubmissionDataTable extends React.Component {
    * @prop {string} filename
    */
   renderAttachment(type, filename) {
-    const fileNameNoSpaces = filename.replace(/ /g, '_');
-    const attachment = this.findAttachmentData(fileNameNoSpaces);
-
-    if (attachment) {
+    const attachment = getMediaAttachment(this.props.submissionData, filename);
+    if (attachment && attachment instanceof Object) {
       if (type === QUESTION_TYPES.image.id) {
         return (
           <a href={attachment.download_url} target='_blank'>
-            <img src={attachment.download_small_url}/>
+            <img src={attachment.download_medium_url}/>
           </a>
         );
       } else {
@@ -279,7 +267,7 @@ class SubmissionDataTable extends React.Component {
       }
     // In the case that an attachment is missing, don't crash the page
     } else {
-      return(t('Could not retrieve ##filename##').replace('##filename##', filename));
+      return attachment;
     }
   }
 
@@ -291,7 +279,7 @@ class SubmissionDataTable extends React.Component {
     return (
       <bem.SubmissionDataTable__row m={['columns', 'response', 'metadata']}>
         <bem.SubmissionDataTable__column m='type'>
-          <i className='k-icon k-icon-qt-meta-default'/>
+          {renderQuestionTypeIcon(dataName)}
         </bem.SubmissionDataTable__column>
 
         <bem.SubmissionDataTable__column m='label'>

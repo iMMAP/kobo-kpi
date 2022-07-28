@@ -1,14 +1,20 @@
 # coding: utf-8
 import copy
+import os
+import re
 import time
 import uuid
 from datetime import datetime
+from typing import Optional, Union
+from xml.etree import ElementTree as ET
 
 import pytz
 from deepmerge import always_merger
 from dicttoxml import dicttoxml
 from django.conf import settings
 from django.urls import reverse
+from django.utils.translation import gettext as t
+from lxml import etree
 from rest_framework import status
 
 from kpi.constants import (
@@ -17,12 +23,20 @@ from kpi.constants import (
     PERM_CHANGE_SUBMISSIONS,
     PERM_DELETE_SUBMISSIONS,
     PERM_VALIDATE_SUBMISSIONS,
-    PERM_VIEW_SUBMISSIONS,
+)
+from kpi.exceptions import (
+    AttachmentNotFoundException,
+    InvalidXPathException,
+    SubmissionNotFoundException,
+    XPathNotFoundException,
 )
 from kpi.interfaces.sync_backend_media import SyncBackendMediaInterface
 from kpi.models.asset_file import AssetFile
+from kpi.tests.utils.mock import MockAttachment
 from kpi.utils.mongo_helper import MongoHelper, drop_mock_only
+from kpi.utils.xml import edit_submission_xml
 from .base_backend import BaseDeploymentBackend
+from ..exceptions import KobocatBulkUpdateSubmissionsClientException
 
 
 class MockDeploymentBackend(BaseDeploymentBackend):
@@ -30,51 +44,74 @@ class MockDeploymentBackend(BaseDeploymentBackend):
     Only used for unit testing and interface testing.
     """
 
+    PROTECTED_XML_FIELDS = [
+        '__version__',
+        'formhub',
+        'meta',
+    ]
+
     def bulk_assign_mapped_perms(self):
         pass
 
     def bulk_update_submissions(
         self, data: dict, user: 'auth.User'
     ) -> dict:
-
-        submission_ids = self.validate_write_access_with_partial_perms(
+        submission_ids = self.validate_access_with_partial_perms(
             user=user,
             perm=PERM_CHANGE_SUBMISSIONS,
             submission_ids=data['submission_ids'],
             query=data['query'],
         )
 
-        if not submission_ids:
+        if submission_ids:
+            data['query'] = {}
+        else:
             submission_ids = data['submission_ids']
 
         submissions = self.get_submissions(
             user=user,
-            format_type=SUBMISSION_FORMAT_TYPE_JSON,
-            submission_ids=submission_ids
+            format_type=SUBMISSION_FORMAT_TYPE_XML,
+            submission_ids=submission_ids,
+            query=data['query'],
         )
 
-        submission_ids = [int(id_) for id_ in submission_ids]
+        if not self.current_submissions_count:
+            raise KobocatBulkUpdateSubmissionsClientException(
+                detail=t('No submissions match the given `submission_ids`')
+            )
 
-        responses = []
+        update_data = self.__prepare_bulk_update_data(data['data'])
+        kc_responses = []
         for submission in submissions:
-            if submission['_id'] in submission_ids:
-                _uuid = uuid.uuid4()
-                submission['meta/deprecatedID'] = submission['meta/instanceID']
-                submission['meta/instanceID'] = f'uuid:{_uuid}'
-                for k, v in data['data'].items():
-                    submission[k] = v
+            # Remove XML declaration from submission
+            submission = re.sub(r'(<\?.*\?>)', '', submission)
+            xml_parsed = etree.fromstring(submission)
 
-                # Mirror KobocatDeploymentBackend responses
-                responses.append(
-                    {
-                        'uuid': _uuid,
-                        'status_code': status.HTTP_201_CREATED,
-                        'message': 'Successful submission'
-                    }
-                )
+            _uuid, uuid_formatted = self.generate_new_instance_id()
 
-        self.mock_submissions(submissions)
-        return self.__prepare_bulk_update_response(responses)
+            instance_id = xml_parsed.find('meta/instanceID')
+            deprecated_id = xml_parsed.find('meta/deprecatedID')
+            deprecated_id_or_new = (
+                deprecated_id
+                if deprecated_id is not None
+                else etree.SubElement(xml_parsed.find('meta'), 'deprecatedID')
+            )
+            deprecated_id_or_new.text = instance_id.text
+            instance_id.text = uuid_formatted
+
+            for path, value in update_data.items():
+                edit_submission_xml(xml_parsed, path, value)
+
+            kc_responses.append(
+                {
+                    'uuid': _uuid,
+                    'status_code': status.HTTP_201_CREATED,
+                    'message': 'Successful submission',
+                    'updated_submission': etree.tostring(xml_parsed) # only for testing
+                }
+            )
+
+        return self.__prepare_bulk_update_response(kc_responses)
 
     def calculated_submission_count(self, user: 'auth.User', **kwargs) -> int:
         params = self.validate_submission_list_params(user,
@@ -99,7 +136,7 @@ class MockDeploymentBackend(BaseDeploymentBackend):
         """
         Delete a submission
         """
-        self.validate_write_access_with_partial_perms(
+        self.validate_access_with_partial_perms(
             user=user,
             perm=PERM_DELETE_SUBMISSIONS,
             submission_ids=[submission_id],
@@ -132,7 +169,7 @@ class MockDeploymentBackend(BaseDeploymentBackend):
              or
              {"query": {"Question": "response"}
         """
-        submission_ids = self.validate_write_access_with_partial_perms(
+        submission_ids = self.validate_access_with_partial_perms(
             user=user,
             perm=PERM_DELETE_SUBMISSIONS,
             submission_ids=data['submission_ids'],
@@ -176,7 +213,7 @@ class MockDeploymentBackend(BaseDeploymentBackend):
         # TODO: Make this operate on XML somehow and reuse code from
         # KobocatDeploymentBackend, to catch issues like #3054
 
-        self.validate_write_access_with_partial_perms(
+        self.validate_access_with_partial_perms(
             user=user,
             perm=PERM_CHANGE_SUBMISSIONS,
             submission_ids=[submission_id],
@@ -196,44 +233,83 @@ class MockDeploymentBackend(BaseDeploymentBackend):
             'end': updated_time,
             'meta/instanceID': f'uuid:{uuid.uuid4()}'
         })
-        
+
         settings.MONGO_DB.instances.insert_one(duplicated_submission)
         return duplicated_submission
 
-    def get_data_download_links(self):
-        return {}
-
-    def get_enketo_submission_url(
+    def get_attachment(
         self,
-        submission_id: int,
+        submission_id_or_uuid: Union[int, str],
         user: 'auth.User',
-        params: dict = None,
-        action_: str = 'edit',
-    ) -> dict:
-        """
-        Gets URL of the submission in a format FE can understand
-        """
-        if action_ == 'edit':
-            partial_perm = PERM_CHANGE_SUBMISSIONS
-        elif action_ == 'view':
-            partial_perm = PERM_VIEW_SUBMISSIONS
+        attachment_id: Optional[int] = None,
+        xpath: Optional[str] = None,
+    ) -> MockAttachment:
+
+        submission_json = None
+        # First try to get the json version of the submission.
+        # It helps to retrieve the id if `submission_id_or_uuid` is a `UUIDv4`
+        try:
+            submission_id_or_uuid = int(submission_id_or_uuid)
+        except ValueError:
+            submissions = self.get_submissions(
+                user,
+                format_type=SUBMISSION_FORMAT_TYPE_JSON,
+                query={'_uuid': submission_id_or_uuid},
+            )
+            if submissions:
+                submission_json = submissions[0]
         else:
-            raise NotImplementedError(
-                "Only 'view' and 'edit' actions are currently supported"
+            submission_json = self.get_submission(
+                submission_id_or_uuid, user, format_type=SUBMISSION_FORMAT_TYPE_JSON
             )
 
-        submission_ids = self.validate_write_access_with_partial_perms(
-            user=user,
-            perm=partial_perm,
-            submission_ids=[submission_id],
+        if not submission_json:
+            raise SubmissionNotFoundException
+
+        submission_xml = self.get_submission(
+            submission_json['_id'], user, format_type=SUBMISSION_FORMAT_TYPE_XML
         )
 
-        return {
-            'content_type': 'application/json',
-            'data': {
-                'url': f'http://server.mock/enketo/{action_}/{submission_id}'
-            }
-        }
+        if xpath:
+            submission_tree = ET.ElementTree(
+                ET.fromstring(submission_xml)
+            )
+            try:
+                element = submission_tree.find(xpath)
+            except KeyError:
+                raise InvalidXPathException
+
+            try:
+                attachment_filename = element.text
+            except AttributeError:
+                raise XPathNotFoundException
+
+        attachments = submission_json['_attachments']
+        for attachment in attachments:
+            filename = os.path.basename(attachment['filename'])
+
+            if xpath:
+                is_good_file = attachment_filename == filename
+            else:
+                is_good_file = int(attachment['id']) == int(attachment_id)
+
+            if is_good_file:
+                return MockAttachment(pk=attachment_id, **attachment)
+
+        raise AttachmentNotFoundException
+
+    def get_attachment_objects_from_dict(self, submission: dict) -> list:
+
+        if not submission.get('_attachments'):
+            return []
+
+        return [
+            MockAttachment(pk=attachment['id'], **attachment)
+            for attachment in attachments
+        ]
+
+    def get_data_download_links(self):
+        return {}
 
     def get_enketo_survey_links(self):
         # `self` is a demo Enketo form, but there's no guarantee it'll be
@@ -263,6 +339,7 @@ class MockDeploymentBackend(BaseDeploymentBackend):
         user: 'auth.User',
         format_type: str = SUBMISSION_FORMAT_TYPE_JSON,
         submission_ids: list = [],
+        request: Optional['rest_framework.request.Request'] = None,
         **mongo_query_params
     ) -> list:
         """
@@ -393,7 +470,7 @@ class MockDeploymentBackend(BaseDeploymentBackend):
                               data: dict,
                               method: str) -> dict:
 
-        self.validate_write_access_with_partial_perms(
+        self.validate_access_with_partial_perms(
             user=user,
             perm=PERM_VALIDATE_SUBMISSIONS,
             submission_ids=[submission_id],
@@ -430,10 +507,10 @@ class MockDeploymentBackend(BaseDeploymentBackend):
         Examples:
             {"submission_ids": [1, 2, 3]}
             {"query":{"_validation_status.uid":"validation_status_not_approved"}
-        
+
         """
 
-        submission_ids = self.validate_write_access_with_partial_perms(
+        submission_ids = self.validate_access_with_partial_perms(
             user=user,
             perm=PERM_VALIDATE_SUBMISSIONS,
             submission_ids=data['submission_ids'],
@@ -480,6 +557,20 @@ class MockDeploymentBackend(BaseDeploymentBackend):
             }
         }
 
+    @staticmethod
+    def generate_new_instance_id() -> (str, str):
+        """
+        Returns:
+            - Generated uuid
+            - Formatted uuid for OpenRosa xml
+        """
+        _uuid = str(uuid.uuid4())
+        return _uuid, f'uuid:{_uuid}'
+
+    @property
+    def submission_count(self):
+        return self.calculated_submission_count(self.asset.owner)
+
     @property
     def submission_list_url(self):
         # This doesn't really need to be implemented.
@@ -495,6 +586,22 @@ class MockDeploymentBackend(BaseDeploymentBackend):
         queryset = self._get_metadata_queryset(file_type=file_type)
         for obj in queryset:
             assert issubclass(obj.__class__, SyncBackendMediaInterface)
+
+    @classmethod
+    def __prepare_bulk_update_data(cls, updates: dict) -> dict:
+        """
+        Preparing the request payload for bulk updating of submissions
+        """
+        # Sanitizing the payload of potentially destructive keys
+        sanitized_updates = copy.deepcopy(updates)
+        for key in updates:
+            if (
+                key in cls.PROTECTED_XML_FIELDS
+                or '/' in key and key.split('/')[0] in cls.PROTECTED_XML_FIELDS
+            ):
+                sanitized_updates.pop(key)
+
+        return sanitized_updates
 
     @staticmethod
     def __prepare_bulk_update_response(kc_responses: list) -> dict:

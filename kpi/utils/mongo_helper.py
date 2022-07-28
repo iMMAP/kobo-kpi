@@ -3,6 +3,7 @@ import re
 
 from django.conf import settings
 
+from kobo.celery import celery_app
 from kpi.constants import NESTED_MONGO_RESERVED_ATTRIBUTES
 from kpi.utils.strings import base64_encodestring
 
@@ -47,6 +48,7 @@ class MongoHelper:
         '$regex',
         '$options',
         '$all',
+        '$elemMatch',
     ]
 
     ENCODING_SUBSTITUTIONS = [
@@ -114,13 +116,16 @@ class MongoHelper:
         query=None,
         submission_ids=None,
         permission_filters=None,
+        skip_count=False,
     ):
         cursor, total_count = cls._get_cursor_and_count(
             mongo_userform_id,
             fields=fields,
             query=query,
             submission_ids=submission_ids,
-            permission_filters=permission_filters)
+            permission_filters=permission_filters,
+            skip_count=skip_count,
+        )
 
         cursor.skip(start)
         if limit is not None:
@@ -136,6 +141,17 @@ class MongoHelper:
         cursor.batch_size = cls.DEFAULT_BATCHSIZE
 
         return cursor, total_count
+
+    @staticmethod
+    def get_max_time_ms():
+        """
+        Return the appropriate query timeout in milliseconds
+        """
+        if celery_app.current_worker_task:
+            max_time_secs = settings.MONGO_CELERY_QUERY_TIMEOUT
+        else:
+            max_time_secs = settings.MONGO_QUERY_TIMEOUT
+        return max_time_secs * 1000
 
     @classmethod
     def is_attribute_invalid(cls, key: str) -> str:
@@ -289,6 +305,7 @@ class MongoHelper:
         query=None,
         submission_ids=None,
         permission_filters=None,
+        skip_count=False,
     ):
 
         if len(submission_ids) > 0:
@@ -330,11 +347,14 @@ class MongoHelper:
             fields_to_select = {cls.USERFORM_ID: 0}
 
         cursor = settings.MONGO_DB.instances.find(
-            query,
-            fields_to_select,
-            max_time_ms=settings.MONGO_DB_MAX_TIME_MS
+            query, fields_to_select, max_time_ms=cls.get_max_time_ms()
         )
-        return cursor, cursor.count()
+        count = None
+        if not skip_count:
+            count = settings.MONGO_DB.instances.count_documents(
+                query, maxTimeMS=cls.get_max_time_ms()
+            )
+        return cursor, count
 
     @classmethod
     def _is_attribute_encoded(cls, key):
